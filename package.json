@@ -1,0 +1,62 @@
+{
+  "name": "mdflow",
+  "publisher": "spawnerastudio",
+  "displayName": "MD Flow",
+  "description": "MD Flow extension with React Webview",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/spawnerastudio/mdflow-vsix"
+  },
+  "icon": "assets/logo.png",
+  "version": "1.1.1",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "mdflow.openView",
+        "title": "MD Flow SE : View Mode"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "mdflow.openView",
+          "when": "resourceExtname == .md",
+          "group": "z_commands"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "mdflow.openView",
+          "when": "resourceExtname == .md",
+          "group": "z_commands"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "npm run build:webview && npm run compile",
+    "build:webview": "cd webview-ui && npm run build",
+    "dev:webview": "cd webview-ui && npm run dev"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "@types/node": "18.x",
+    "typescript": "^5.1.3",
+    "@typescript-eslint/eslint-plugin": "^5.59.8",
+    "@typescript-eslint/parser": "^5.59.8",
+    "eslint": "^8.41.0"
+  }
+}
