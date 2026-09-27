@@ -1,111 +1,156 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+@import "tailwindcss";
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+:root, html.theme-dark {
+  --font-display: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-body: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* SpawnEra Brand Dark Theme */
+  --color-bg: #050c14;
+  --color-surface: #0f1825;
+  --color-surface-2: #162335;
+  --color-surface-3: #1f2e45;
+  --color-border: #1f2b3b;
+  --color-border-light: #2e3f57;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  --color-brand: #0ef38d;
+  --color-brand-hover: #05d677;
+  --color-brand-glow: rgba(14, 243, 141, 0.25);
+
+  --color-primary: #6366f1;
+  --color-primary-dim: #4f46e5;
+  --color-primary-glow: rgba(99, 102, 241, 0.25);
+
+  --color-accent: #a78bfa;
+  --color-accent-dim: #8b5cf6;
+
+  --color-text: #f8fafc;
+  --color-text-muted: #cbd5e1;
+  --color-text-dim: #94a3b8;
+
+  --color-done: #22c55e;
+  --color-progress: #eab308;
+  --color-todo: #ef4444;
+  --color-none: #64748b;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+* {
   box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-body, var(--font-sans));
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  height: 100%;
 }
 
 body {
   margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--color-bg);
+  color: var(--color-text);
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
+::-webkit-scrollbar-track {
+  background: var(--color-surface);
 }
-p {
-  margin: 0;
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-light);
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+/* High Contrast & Crisp Markmap SVG Styling */
+.markmap {
+  width: 100%;
+  height: 100%;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+.markmap-node text,
+.markmap-foreign,
+.markmap-foreign div,
+.markmap-foreign span {
+  fill: var(--color-text) !important;
+  color: var(--color-text) !important;
+  font-family: var(--font-sans) !important;
+  font-weight: 500 !important;
+  font-size: 13.5px !important;
+  letter-spacing: -0.01em;
+}
+
+.markmap-node circle {
+  stroke-width: 2.5px !important;
+  cursor: pointer;
+  transition: r 0.2s, stroke-width 0.2s;
+}
+
+.markmap-node circle:hover {
+  r: 7px;
+  stroke-width: 3px !important;
+}
+
+.markmap-link {
+  stroke-width: 2px !important;
+  opacity: 0.85;
+}
+
+/* High contrast glassmorphism utility */
+.glass-panel {
+  background: var(--color-surface);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+/* Markmap Node Drag-and-Drop Highlight */
+.markmap-drop-target text,
+.markmap-drop-target .markmap-foreign {
+  fill: #0ef38d !important;
+  color: #0ef38d !important;
+  font-weight: 700 !important;
+}
+
+.markmap-drop-target circle {
+  r: 9px !important;
+  stroke: #0ef38d !important;
+  stroke-width: 4px !important;
+  fill: #05c46b !important;
+  filter: drop-shadow(0 0 8px #0ef38d);
+  animation: pulse-ring 1s infinite alternate;
+}
+
+/* Markmap Multi-Selected Node Highlight (Ctrl + Click) */
+.markmap-node-selected text,
+.markmap-node-selected .markmap-foreign {
+  fill: #38bdf8 !important;
+  color: #38bdf8 !important;
+  font-weight: 800 !important;
+}
+
+.markmap-node-selected circle {
+  r: 8.5px !important;
+  stroke: #38bdf8 !important;
+  stroke-width: 3.5px !important;
+  fill: #0284c7 !important;
+  filter: drop-shadow(0 0 6px #38bdf8);
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.15); }
 }

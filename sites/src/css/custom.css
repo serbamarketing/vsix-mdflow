@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --ifm-color-primary: #05c46b;
+  --ifm-color-primary-dark: #04b060;
+  --ifm-color-primary-darker: #04a65b;
+  --ifm-color-primary-darkest: #03894b;
+  --ifm-color-primary-light: #1edb82;
+  --ifm-color-primary-lighter: #2ae18a;
+  --ifm-color-primary-lightest: #4febb1;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --ifm-font-family-base: 'Manrope', 'Inter', sans-serif;
+  --ifm-heading-font-family: 'Space Grotesk', sans-serif;
+  --ifm-background-color: #f8fafc;
+  --ifm-navbar-background-color: #ffffff;
+  --ifm-footer-background-color: #f1f5f9;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #0ef38d;
+  --ifm-color-primary-dark: #0cdb7f;
+  --ifm-color-primary-darker: #0bcf78;
+  --ifm-color-primary-darkest: #09aa62;
+  --ifm-color-primary-light: #26f498;
+  --ifm-color-primary-lighter: #32f59e;
+  --ifm-color-primary-lightest: #57f7af;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --ifm-background-color: #050c14;
+  --ifm-background-surface-color: #0f1825;
+  --ifm-navbar-background-color: rgba(15, 24, 37, 0.95);
+  --ifm-footer-background-color: #0f1825;
+}

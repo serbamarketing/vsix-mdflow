@@ -2,13 +2,13 @@
   "name": "mdflow",
   "publisher": "spawnerastudio",
   "displayName": "MD Flow",
-  "description": "MD Flow extension with React Webview",
+  "description": "Code Extension to visualize Markdown into Mindmap, Table, Kanban, and Calendar views.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/spawnerastudio/mdflow-vsix"
+    "url": "https://github.com/serbamarketing/vsix-mdflow"
   },
   "icon": "assets/logo.png",
-  "version": "1.1.1",
+  "version": "1.0.2",
   "engines": {
     "vscode": "^1.75.0"
   },

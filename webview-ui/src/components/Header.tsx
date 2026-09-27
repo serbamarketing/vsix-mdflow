@@ -1,57 +1,79 @@
-import React from 'react';
-import type { ViewMode } from '../App';
-import { Network, Table as TableIcon, Columns, Calendar, Settings, MoreHorizontal } from 'lucide-react';
-import './Header.css';
+import { Search, X, Network, Table as TableIcon, Columns, Calendar as CalendarIcon } from 'lucide-react'
+import { useAppStore } from '../hooks/useAppStore'
+import type { ViewMode } from '../App'
 
 interface HeaderProps {
-  currentView: ViewMode;
-  onViewChange: (view: ViewMode) => void;
+  currentView: ViewMode
+  onViewChange: (view: ViewMode) => void
 }
 
-const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => {
+const viewTabs: { key: ViewMode; label: string; icon: typeof Network }[] = [
+  { key: 'mindmap', label: 'Mindmap', icon: Network },
+  { key: 'table', label: 'Table', icon: TableIcon },
+  { key: 'kanban', label: 'Kanban', icon: Columns },
+  { key: 'calendar', label: 'Calendar', icon: CalendarIcon },
+]
+
+export function Header({ currentView, onViewChange }: HeaderProps) {
+  const { state, dispatch } = useAppStore()
+
   return (
-    <header className="header-container">
-      <div className="view-modes">
-        <button 
-          className={`icon-button ${currentView === 'mindmap' ? 'active' : ''}`} 
-          onClick={() => onViewChange('mindmap')}
-          title="Mindmap"
-        >
-          <Network size={20} />
-        </button>
-        <button 
-          className={`icon-button ${currentView === 'table' ? 'active' : ''}`} 
-          onClick={() => onViewChange('table')}
-          title="Table"
-        >
-          <TableIcon size={20} />
-        </button>
-        <button 
-          className={`icon-button ${currentView === 'kanban' ? 'active' : ''}`} 
-          onClick={() => onViewChange('kanban')}
-          title="Kanban"
-        >
-          <Columns size={20} />
-        </button>
-        <button 
-          className={`icon-button ${currentView === 'calendar' ? 'active' : ''}`} 
-          onClick={() => onViewChange('calendar')}
-          title="Calendar"
-        >
-          <Calendar size={20} />
-        </button>
+    <header
+      className="flex items-center h-12 border-b shrink-0 glass-panel select-none w-full px-3 gap-3"
+      style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+    >
+      <div className="flex items-center gap-1">
+        {viewTabs.map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onViewChange(key)}
+            title={label}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
+            style={{
+              background: currentView === key ? 'var(--color-brand-glow)' : 'transparent',
+              color: currentView === key ? 'var(--color-brand)' : 'var(--color-text-dim)',
+            }}
+          >
+            <Icon size={14} />
+            <span className="hidden sm:inline">{label}</span>
+          </button>
+        ))}
       </div>
 
-      <div className="actions">
-        <button className="icon-button" title="Settings">
-          <Settings size={20} />
-        </button>
-        <button className="icon-button" title="More">
-          <MoreHorizontal size={20} />
-        </button>
+      <div className="flex-1 max-w-xs relative">
+        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-dim)' }} />
+        <input
+          type="text"
+          placeholder="Cari item..."
+          value={state.searchQuery}
+          onChange={(e) => dispatch({ type: 'SET_SEARCH', payload: e.target.value })}
+          className="w-full pl-8 pr-7 py-1.5 text-xs font-medium rounded-xl border outline-none transition-colors"
+          style={{
+            background: 'var(--color-surface-2)',
+            borderColor: state.searchQuery ? 'var(--color-brand)' : 'var(--color-border)',
+            color: 'var(--color-text)',
+          }}
+        />
+        {state.searchQuery && (
+          <button
+            type="button"
+            onClick={() => dispatch({ type: 'SET_SEARCH', payload: '' })}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer opacity-60 hover:opacity-100"
+            style={{ color: 'var(--color-text-dim)' }}
+          >
+            <X size={12} />
+          </button>
+        )}
       </div>
+
+      <div className="flex-1" />
+
+      {state.fileName && (
+        <span className="text-[11px] truncate max-w-[160px]" style={{ color: 'var(--color-text-dim)' }} title={state.fileName}>
+          {state.fileName}
+        </span>
+      )}
     </header>
-  );
-};
-
-export default Header;
+  )
+}

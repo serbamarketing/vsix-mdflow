@@ -17,3 +17,5 @@ webview-ui/*.json
 webview-ui/*.ts
 webview-ui/*.md
 webview-ui/.gitignore
+sites/**
+docs/**
