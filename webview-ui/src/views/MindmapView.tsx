@@ -261,38 +261,49 @@ export function MindmapView() {
   }
 
   useEffect(() => {
+    const syncNodeHighlights = () => {
+      const svgEl = svgRef.current
+      if (!svgEl) return
+
+      svgEl.querySelectorAll('.markmap-node').forEach((nodeEl) => {
+        const node = findNodeFromElement(nodeEl)
+        if (node) {
+          if (state.selectedFeatureId && node.id === state.selectedFeatureId) {
+            nodeEl.classList.add('markmap-node-active')
+          } else {
+            nodeEl.classList.remove('markmap-node-active')
+          }
+
+          if (selectedNodeIds.has(node.id)) {
+            nodeEl.classList.add('markmap-node-selected')
+          } else {
+            nodeEl.classList.remove('markmap-node-selected')
+          }
+        }
+      })
+    }
+
+    syncNodeHighlights()
+    const timers = [
+      setTimeout(syncNodeHighlights, 60),
+      setTimeout(syncNodeHighlights, 180),
+      setTimeout(syncNodeHighlights, 340),
+      setTimeout(syncNodeHighlights, 550),
+    ]
+
     const svgEl = svgRef.current
-    if (!svgEl) return
+    if (!svgEl) return () => timers.forEach(clearTimeout)
 
-    svgEl.querySelectorAll('.markmap-node-selected').forEach((el) => el.classList.remove('markmap-node-selected'))
-
-    if (selectedNodeIds.size === 0) return
-
-    svgEl.querySelectorAll('.markmap-node').forEach((nodeEl) => {
-      const node = findNodeFromElement(nodeEl)
-      if (node && selectedNodeIds.has(node.id)) {
-        nodeEl.classList.add('markmap-node-selected')
-      }
+    const observer = new MutationObserver(() => {
+      syncNodeHighlights()
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedNodeIds, allFlat])
+    observer.observe(svgEl, { childList: true, subtree: true })
 
-  useEffect(() => {
-    const svgEl = svgRef.current
-    if (!svgEl) return
-
-    svgEl.querySelectorAll('.markmap-node-active').forEach((el) => el.classList.remove('markmap-node-active'))
-
-    if (!state.selectedFeatureId) return
-
-    svgEl.querySelectorAll('.markmap-node').forEach((nodeEl) => {
-      const node = findNodeFromElement(nodeEl)
-      if (node && node.id === state.selectedFeatureId) {
-        nodeEl.classList.add('markmap-node-active')
-      }
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.selectedFeatureId, allFlat, markdownStr])
+    return () => {
+      timers.forEach(clearTimeout)
+      observer.disconnect()
+    }
+  }, [state.selectedFeatureId, selectedNodeIds, allFlat, markdownStr])
 
   useEffect(() => {
     const svgEl = svgRef.current

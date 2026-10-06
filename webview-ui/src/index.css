@@ -243,6 +243,12 @@ body {
   animation: pulse-ring 1.2s infinite alternate;
 }
 
+.markmap-node-active line {
+  stroke: #0ef38d !important;
+  stroke-width: 3.5px !important;
+  filter: drop-shadow(0 0 6px #0ef38d) !important;
+}
+
 @keyframes pulse-ring {
   0% { transform: scale(1); }
   100% { transform: scale(1.15); }

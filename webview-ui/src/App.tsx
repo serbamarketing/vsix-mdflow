@@ -8,6 +8,7 @@ import { CalendarView } from './views/CalendarView'
 import { DetailPanel } from './components/feature/DetailPanel'
 import { NewFeatureModal } from './components/feature/NewFeatureModal'
 import { vscode } from './utils/vscode'
+import { flattenFeatures, generateFeatureId, type FeatureNode } from './models/feature'
 import './App.css'
 
 export type ViewMode = 'mindmap' | 'table' | 'kanban' | 'calendar'
@@ -30,6 +31,108 @@ function AppBody() {
     vscode.postMessage({ command: 'ready' })
     return () => window.removeEventListener('message', handleMessage)
   }, [dispatch])
+
+  // Global Keyboard Shortcuts (Esc, N, D, ArrowUp, ArrowDown, ArrowLeft)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 1. Tangani tombol Escape: tutup DetailPanel atau Modal
+      if (e.key === 'Escape') {
+        if (state.isNewFeatureModalOpen) {
+          dispatch({ type: 'CLOSE_NEW_FEATURE_MODAL' })
+          return
+        }
+        if (state.isDetailOpen || state.selectedFeatureId) {
+          dispatch({ type: 'CLOSE_DETAIL' })
+          return
+        }
+      }
+
+      // 2. Proteksi shortcut form: jika user sedang mengetik di input, textarea, select, contenteditable -> JANGAN interupsi!
+      const target = e.target as HTMLElement | null
+      const isInput = target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable
+      )
+      if (isInput) return
+
+      // 3. Proteksi shortcut sistem & editor: jika ada Ctrl / Alt / Meta -> JANGAN interupsi!
+      if (e.ctrlKey || e.altKey || e.metaKey) return
+
+      // Jika tidak ada item aktif yang terpilih, shortcut manipulasi node tidak aktif
+      if (!state.selectedFeatureId) return
+
+      // 4. Shortcut "N" atau "n": Tambah Sub-item ke item yang sedang aktif
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault()
+        const flat = flattenFeatures(state.features)
+        const active = flat.find((f) => f.id === state.selectedFeatureId)
+        if (active) {
+          const newId = generateFeatureId('Sub-item')
+          const newNode: FeatureNode = {
+            id: newId,
+            title: 'Sub-item',
+            level: active.level + 1,
+            description: '',
+            metadata: {},
+            children: [],
+          }
+          dispatch({
+            type: 'ADD_FEATURE_NODE',
+            payload: { parentId: active.id, node: newNode },
+          })
+        }
+        return
+      }
+
+      // 5. Shortcut "D" atau "d": Hapus item yang sedang aktif
+      if (e.key === 'd' || e.key === 'D') {
+        e.preventDefault()
+        const flat = flattenFeatures(state.features)
+        const active = flat.find((f) => f.id === state.selectedFeatureId)
+        if (active) {
+          if (confirm(`Hapus item "${active.title}"?`)) {
+            dispatch({ type: 'DELETE_FEATURE_NODE', payload: { id: active.id } })
+          }
+        }
+        return
+      }
+
+      // 6. Shortcut Panah Atas ("ArrowUp"): Geser posisi item ke atas (urutan naik)
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        dispatch({
+          type: 'REORDER_FEATURE_NODE',
+          payload: { id: state.selectedFeatureId, direction: 'up' },
+        })
+        return
+      }
+
+      // 7. Shortcut Panah Bawah ("ArrowDown"): Geser posisi item ke bawah (urutan turun)
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        dispatch({
+          type: 'REORDER_FEATURE_NODE',
+          payload: { id: state.selectedFeatureId, direction: 'down' },
+        })
+        return
+      }
+
+      // 8. Shortcut Panah Kiri ("ArrowLeft"): Outdent (memindahkan dari parent B jadi keluar dari B sehingga ke A)
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        dispatch({
+          type: 'OUTDENT_FEATURE_NODE',
+          payload: { id: state.selectedFeatureId },
+        })
+        return
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [state.selectedFeatureId, state.isDetailOpen, state.isNewFeatureModalOpen, state.features, dispatch])
 
   const renderView = () => {
     if (state.features.length === 0) {

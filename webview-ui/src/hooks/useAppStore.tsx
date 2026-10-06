@@ -9,6 +9,8 @@ import {
   moveMultipleNodesToParentInTree,
   deleteMetadataKeyFromAll,
   reorderNodeInTree,
+  outdentNodeInTree,
+  reorderNodeRelativeInTree,
   findFeatureById,
   flattenFeatures,
 } from '../models/feature'
@@ -53,6 +55,8 @@ export type AppAction =
   | { type: 'BATCH_DELETE_NODES'; payload: { ids: string[] } }
   | { type: 'BATCH_UPDATE_STATUS'; payload: { ids: string[]; status: string } }
   | { type: 'REORDER_FEATURE_NODE'; payload: { id: string; direction: 'up' | 'down' } }
+  | { type: 'OUTDENT_FEATURE_NODE'; payload: { id: string } }
+  | { type: 'REORDER_NODE_RELATIVE'; payload: { sourceId: string; targetId: string; position: 'before' | 'after'; newMetadata?: Record<string, string> } }
   | { type: 'ADD_CUSTOM_COLUMN'; payload: { key: string } }
   | { type: 'DELETE_CUSTOM_COLUMN'; payload: { key: string } }
   | { type: 'SET_CUSTOM_STATUSES'; payload: StatusDefinition[] }
@@ -211,6 +215,32 @@ function reducer(state: AppState, action: AppAction): AppState {
         features: reorderNodeInTree(state.features, action.payload.id, action.payload.direction),
         origin: 'local',
       }
+
+    case 'OUTDENT_FEATURE_NODE':
+      return {
+        ...state,
+        features: outdentNodeInTree(state.features, action.payload.id),
+        origin: 'local',
+      }
+
+    case 'REORDER_NODE_RELATIVE': {
+      let updatedTree = reorderNodeRelativeInTree(
+        state.features,
+        action.payload.sourceId,
+        action.payload.targetId,
+        action.payload.position
+      )
+      if (action.payload.newMetadata) {
+        updatedTree = updateNodeInTree(updatedTree, action.payload.sourceId, {
+          metadata: action.payload.newMetadata,
+        })
+      }
+      return {
+        ...state,
+        features: updatedTree,
+        origin: 'local',
+      }
+    }
 
     case 'ADD_CUSTOM_COLUMN': {
       const colKey = action.payload.key.toLowerCase().trim()

@@ -318,3 +318,99 @@ export function generateFeatureId(title: string): string {
     .substring(0, 30) || 'item'
   return `${slug}-${Date.now().toString(36).slice(-4)}`
 }
+
+// Find parent of a node in tree
+export function findParentNode(nodes: FeatureNode[], childId: string): FeatureNode | null {
+  for (const node of nodes) {
+    if (node.children.some((c) => c.id === childId)) {
+      return node
+    }
+    const foundInChild = findParentNode(node.children, childId)
+    if (foundInChild) return foundInChild
+  }
+  return null
+}
+
+// Outdent: Move node out of its current parent B into grandparent A
+export function outdentNodeInTree(nodes: FeatureNode[], id: string): FeatureNode[] {
+  const parent = findParentNode(nodes, id)
+  if (!parent) {
+    // Already at root level, cannot outdent further
+    return nodes
+  }
+  const grandparent = findParentNode(nodes, parent.id)
+  const targetParentId = grandparent ? grandparent.id : null
+  return moveNodeToParentInTree(nodes, id, targetParentId)
+}
+
+// Reorder a node relative to another node (before or after)
+export function reorderNodeRelativeInTree(
+  nodes: FeatureNode[],
+  sourceId: string,
+  targetId: string,
+  position: 'before' | 'after'
+): FeatureNode[] {
+  if (sourceId === targetId) return nodes
+
+  const sourceNode = findFeatureById(nodes, sourceId)
+  if (!sourceNode) return nodes
+
+  // Prevent dragging a parent into its own descendant
+  const isDescendant = (parent: FeatureNode, checkId: string): boolean => {
+    for (const child of parent.children) {
+      if (child.id === checkId) return true
+      if (isDescendant(child, checkId)) return true
+    }
+    return false
+  }
+  if (isDescendant(sourceNode, targetId)) return nodes
+
+  const sourceParent = findParentNode(nodes, sourceId)
+  const targetParent = findParentNode(nodes, targetId)
+
+  // 1. Same parent / siblings
+  if ((!sourceParent && !targetParent) || (sourceParent && targetParent && sourceParent.id === targetParent.id)) {
+    const reorderList = (list: FeatureNode[]): FeatureNode[] => {
+      const srcIdx = list.findIndex((n) => n.id === sourceId)
+      if (srcIdx === -1) {
+        return list.map((n) => ({ ...n, children: reorderList(n.children) }))
+      }
+
+      const item = list[srcIdx]
+      const filtered = list.filter((n) => n.id !== sourceId)
+      const tgtIdx = filtered.findIndex((n) => n.id === targetId)
+      if (tgtIdx === -1) return list
+
+      const insertIdx = position === 'before' ? tgtIdx : tgtIdx + 1
+      const result = [...filtered]
+      result.splice(insertIdx, 0, item)
+      return result
+    }
+
+    return reorderList(nodes)
+  }
+
+  // 2. Different parent: remove source and insert relative to target
+  const treeWithoutSource = deleteNodeInTree(nodes, sourceId)
+  const targetNode = findFeatureById(treeWithoutSource, targetId)
+  if (!targetNode) return nodes
+
+  const adjustedSource = adjustLevels(sourceNode, targetNode.level)
+
+  const insertInList = (list: FeatureNode[]): FeatureNode[] => {
+    const tgtIdx = list.findIndex((n) => n.id === targetId)
+    if (tgtIdx !== -1) {
+      const insertIdx = position === 'before' ? tgtIdx : tgtIdx + 1
+      const result = [...list]
+      result.splice(insertIdx, 0, adjustedSource)
+      return result
+    }
+    return list.map((n) => ({
+      ...n,
+      children: insertInList(n.children),
+    }))
+  }
+
+  return insertInList(treeWithoutSource)
+}
+

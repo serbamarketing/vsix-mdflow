@@ -54,6 +54,18 @@ export function DetailPanel() {
     }
   }, [feature?.id, feature?.title, feature?.description, feature?.metadata])
 
+  // Tutup panel detail dengan tombol Escape
+  useEffect(() => {
+    if (!isDetailOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        dispatch({ type: 'CLOSE_DETAIL' })
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isDetailOpen, dispatch])
+
   if (!isDetailOpen || !feature) return null
 
   const handleSaveField = (key: string, value: string) => {

@@ -12,6 +12,8 @@ export function KanbanView() {
   const [onlyTodoItems, setOnlyTodoItems] = useState(true)
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
+  const [dragOverCardId, setDragOverCardId] = useState<string | null>(null)
+  const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after')
   const [newStatusName, setNewStatusName] = useState('')
   const [isAddingStatus, setIsAddingStatus] = useState(false)
   const [isBadgeDropdownOpen, setIsBadgeDropdownOpen] = useState(false)
@@ -120,6 +122,7 @@ export function KanbanView() {
   const handleDragEnd = () => {
     setDraggedId(null)
     setDragOverColumn(null)
+    setDragOverCardId(null)
   }
 
   const handleDragOver = (e: React.DragEvent, colId: string) => {
@@ -132,19 +135,44 @@ export function KanbanView() {
     if (dragOverColumn === colId) setDragOverColumn(null)
   }
 
-  const handleDrop = (e: React.DragEvent, targetCol: StatusDefinition) => {
+  const handleCardDragOver = (e: React.DragEvent, targetId: string) => {
     e.preventDefault()
-    const id = e.dataTransfer.getData('text/plain') || draggedId
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = 'move'
+
+    if (draggedId === targetId) return
+
+    const rect = e.currentTarget.getBoundingClientRect()
+    const midY = rect.top + rect.height / 2
+    const pos = e.clientY < midY ? 'before' : 'after'
+
+    setDragOverCardId(targetId)
+    setDropPosition(pos)
+  }
+
+  const handleCardDragLeave = (targetId: string) => {
+    if (dragOverCardId === targetId) {
+      setDragOverCardId(null)
+    }
+  }
+
+  const handleCardDrop = (e: React.DragEvent, targetFeature: FeatureNode, targetCol: StatusDefinition) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    const sourceId = e.dataTransfer.getData('text/plain') || draggedId
+    const currentPos = dropPosition
+
     setDraggedId(null)
     setDragOverColumn(null)
+    setDragOverCardId(null)
 
-    if (!id) return
+    if (!sourceId || sourceId === targetFeature.id) return
 
-    const item = allFlat.find((f) => f.id === id)
-    if (!item) return
+    const sourceItem = allFlat.find((f) => f.id === sourceId)
+    if (!sourceItem) return
 
-    const updatedMeta = { ...item.metadata }
-
+    const updatedMeta = { ...sourceItem.metadata }
     if (groupBy === 'priority') {
       updatedMeta.priority = targetCol.id === 'no-priority' ? '' : targetCol.label
     } else if (groupBy === 'pic') {
@@ -155,7 +183,55 @@ export function KanbanView() {
       updatedMeta.status = targetCol.id === 'no-status' ? '' : targetCol.label
     }
 
-    dispatch({ type: 'UPDATE_FEATURE_NODE', payload: { id, updates: { metadata: updatedMeta } } })
+    dispatch({
+      type: 'REORDER_NODE_RELATIVE',
+      payload: {
+        sourceId,
+        targetId: targetFeature.id,
+        position: currentPos,
+        newMetadata: updatedMeta,
+      },
+    })
+  }
+
+  const handleDrop = (e: React.DragEvent, targetCol: StatusDefinition) => {
+    e.preventDefault()
+    const id = e.dataTransfer.getData('text/plain') || draggedId
+    setDraggedId(null)
+    setDragOverColumn(null)
+    setDragOverCardId(null)
+
+    if (!id) return
+
+    const item = allFlat.find((f) => f.id === id)
+    if (!item) return
+
+    const updatedMeta = { ...item.metadata }
+    if (groupBy === 'priority') {
+      updatedMeta.priority = targetCol.id === 'no-priority' ? '' : targetCol.label
+    } else if (groupBy === 'pic') {
+      updatedMeta.pic = targetCol.id === 'no-pic' ? '' : targetCol.label
+    } else if (groupBy === 'type') {
+      updatedMeta.type = targetCol.id === 'no-type' ? '' : targetCol.label
+    } else {
+      updatedMeta.status = targetCol.id === 'no-status' ? '' : targetCol.label
+    }
+
+    const cardsInCol = byColumn[targetCol.id] ?? []
+    if (cardsInCol.length > 0 && !cardsInCol.some((c) => c.id === id)) {
+      const lastCard = cardsInCol[cardsInCol.length - 1]
+      dispatch({
+        type: 'REORDER_NODE_RELATIVE',
+        payload: {
+          sourceId: id,
+          targetId: lastCard.id,
+          position: 'after',
+          newMetadata: updatedMeta,
+        },
+      })
+    } else {
+      dispatch({ type: 'UPDATE_FEATURE_NODE', payload: { id, updates: { metadata: updatedMeta } } })
+    }
   }
 
   const handleAddStatus = (e: React.FormEvent) => {
@@ -401,8 +477,8 @@ export function KanbanView() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-x-auto p-6">
-        <div className="flex gap-4 h-full min-w-max items-start">
+      <div className="flex-1 overflow-x-auto p-4 md:p-6">
+        <div className="flex gap-3.5 h-full min-w-max items-start">
           {columns.map((col) => {
             const cards = byColumn[col.id] ?? []
             const isOver = dragOverColumn === col.id
@@ -414,32 +490,36 @@ export function KanbanView() {
                 onDragOver={(e) => handleDragOver(e, col.id)}
                 onDragLeave={() => handleDragLeave(col.id)}
                 onDrop={(e) => handleDrop(e, col)}
-                className={`flex flex-col w-72 max-h-full rounded-2xl border transition-all duration-200 ${isOver ? 'ring-2 shadow-xl scale-[1.01]' : ''}`}
+                className={`flex flex-col w-64 md:w-68 max-h-full rounded-2xl border transition-all duration-200 ${isOver ? 'ring-2 shadow-xl scale-[1.01]' : ''}`}
                 style={{
                   background: 'var(--color-surface)',
                   borderColor: isOver ? 'var(--color-primary)' : 'var(--color-border)',
                   boxShadow: isOver ? '0 0 24px var(--color-primary-glow)' : 'none',
                 }}
               >
-                <div className="px-4 py-3 border-b flex items-center justify-between gap-2 shrink-0" style={{ borderColor: 'var(--color-border)' }}>
+                <div className="px-3.5 py-2.5 border-b flex items-center justify-between gap-2 shrink-0" style={{ borderColor: 'var(--color-border)' }}>
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: colColor }} />
-                    <h3 className="text-sm font-bold truncate" style={{ color: 'var(--color-text)' }}>{col.label}</h3>
+                    <h3 className="text-xs font-bold truncate" style={{ color: 'var(--color-text)' }}>{col.label}</h3>
                   </div>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-mono font-semibold shrink-0" style={{ background: 'var(--color-surface-2)', color: 'var(--color-text-muted)' }}>
+                  <span className="text-[11px] px-2 py-0.5 rounded-full font-mono font-semibold shrink-0" style={{ background: 'var(--color-surface-2)', color: 'var(--color-text-muted)' }}>
                     {cards.length}
                   </span>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5">
+                <div className="flex-1 overflow-y-auto p-2 space-y-2">
                   {cards.map((feature) => (
                     <KanbanCard
                       key={feature.id}
                       feature={feature}
                       isSelected={state.selectedFeatureId === feature.id}
                       isBeingDragged={draggedId === feature.id}
+                      dragOverPosition={dragOverCardId === feature.id ? dropPosition : null}
                       onDragStart={(e) => handleDragStart(e, feature.id)}
                       onDragEnd={handleDragEnd}
+                      onCardDragOver={(e) => handleCardDragOver(e, feature.id)}
+                      onCardDragLeave={() => handleCardDragLeave(feature.id)}
+                      onCardDrop={(e) => handleCardDrop(e, feature, col)}
                       onClick={() => dispatch({ type: 'SELECT_FEATURE', payload: feature.id })}
                       onContextMenu={(e) => {
                         e.preventDefault()
@@ -598,8 +678,12 @@ function KanbanCard({
   feature,
   isSelected,
   isBeingDragged,
+  dragOverPosition,
   onDragStart,
   onDragEnd,
+  onCardDragOver,
+  onCardDragLeave,
+  onCardDrop,
   onClick,
   onContextMenu,
   customStatuses,
@@ -608,8 +692,12 @@ function KanbanCard({
   feature: FeatureNode
   isSelected: boolean
   isBeingDragged: boolean
+  dragOverPosition?: 'before' | 'after' | null
   onDragStart: (e: React.DragEvent) => void
   onDragEnd: () => void
+  onCardDragOver: (e: React.DragEvent) => void
+  onCardDragLeave: () => void
+  onCardDrop: (e: React.DragEvent) => void
   onClick: () => void
   onContextMenu: (e: React.MouseEvent) => void
   customStatuses: StatusDefinition[]
@@ -631,66 +719,77 @@ function KanbanCard({
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
+      onDragOver={onCardDragOver}
+      onDragLeave={onCardDragLeave}
+      onDrop={onCardDrop}
       onClick={onClick}
       onContextMenu={onContextMenu}
-      className={`group relative p-3.5 rounded-xl border cursor-grab active:cursor-grabbing transition-all duration-150 select-none ${
-        isSelected ? 'ring-2 ring-emerald-400 shadow-lg shadow-emerald-500/20' : 'hover:border-slate-500'
+      className={`group relative p-2.5 rounded-xl border cursor-grab active:cursor-grabbing transition-all duration-100 select-none ${
+        isSelected
+          ? 'ring-2 ring-emerald-400 shadow-md shadow-emerald-500/20'
+          : 'hover:border-slate-500'
+      } ${
+        dragOverPosition === 'before'
+          ? 'border-t-2 !border-t-emerald-400 shadow-sm'
+          : dragOverPosition === 'after'
+          ? 'border-b-2 !border-b-emerald-400 shadow-sm'
+          : ''
       }`}
       style={{
-        opacity: isBeingDragged ? 0.4 : 1,
+        opacity: isBeingDragged ? 0.35 : 1,
         background: isSelected ? 'var(--color-surface-3)' : 'var(--color-surface-2)',
         borderColor: isSelected ? 'var(--color-brand)' : 'var(--color-border)',
       }}
     >
       {(config.showImage !== false) && (feature.metadata.image || feature.metadata.images || feature.metadata.thumbnail || feature.metadata.cover) && (
-        <div className="mb-2.5 rounded-lg overflow-hidden border border-[var(--color-border)] shadow-sm">
+        <div className="mb-2 rounded-lg overflow-hidden border border-[var(--color-border)] shadow-sm">
           <img
             src={feature.metadata.image || feature.metadata.images || feature.metadata.thumbnail || feature.metadata.cover}
             alt={feature.title}
-            className="w-full h-28 object-cover group-hover:scale-105 transition-transform"
+            className="w-full h-24 object-cover group-hover:scale-105 transition-transform"
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
           />
         </div>
       )}
 
-      <div className="flex items-start gap-2">
-        <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: statusColor }} />
+      <div className="flex items-start gap-1.5">
+        <div className="w-2 h-2 rounded-full mt-1 shrink-0" style={{ background: statusColor }} />
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold leading-snug break-words" style={{ color: 'var(--color-text)' }}>{feature.title}</p>
         </div>
       </div>
 
       {config.showDescription && feature.description && (
-        <p className="text-[11px] mt-2 line-clamp-2 leading-relaxed" style={{ color: 'var(--color-text-dim)' }}>
-          {feature.description}
+        <p className="text-[10.5px] mt-1.5 line-clamp-2 leading-relaxed" style={{ color: 'var(--color-text-dim)' }}>
+          {feature.description.replace(/^\*\*(?:desc|deskripsi):\*\*\s*/i, '')}
         </p>
       )}
 
-      <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+      <div className="flex flex-wrap items-center gap-1 mt-2">
         {config.showPriority && feature.metadata.priority && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: 'var(--color-surface)', color: '#f59e0b' }}>
+          <span className="text-[9.5px] px-1.5 py-0.2 rounded font-medium border" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: '#f59e0b' }}>
             {feature.metadata.priority}
           </span>
         )}
 
         {config.showType && feature.metadata.type && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: 'var(--color-surface)', color: '#a78bfa' }}>
-            <Tag size={9} className="inline mr-1" />
-            {feature.metadata.type}
+          <span className="text-[9.5px] px-1.5 py-0.2 rounded font-medium border inline-flex items-center gap-0.5" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: '#a78bfa' }}>
+            <Tag size={8} />
+            <span>{feature.metadata.type}</span>
           </span>
         )}
 
         {config.showPic && feature.metadata.pic && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium flex items-center gap-1" style={{ background: 'var(--color-surface)', color: '#38bdf8' }}>
-            <User size={9} />
-            {feature.metadata.pic}
+          <span className="text-[9.5px] px-1.5 py-0.2 rounded font-medium border inline-flex items-center gap-0.5" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: '#38bdf8' }}>
+            <User size={8} />
+            <span>{feature.metadata.pic}</span>
           </span>
         )}
 
         {config.showDeadline && feature.metadata.deadline && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium flex items-center gap-1" style={{ background: 'var(--color-surface)', color: '#f43f5e' }}>
-            <Calendar size={9} />
-            {feature.metadata.deadline}
+          <span className="text-[9.5px] px-1.5 py-0.2 rounded font-medium border inline-flex items-center gap-0.5" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: '#f43f5e' }}>
+            <Calendar size={8} />
+            <span>{feature.metadata.deadline}</span>
           </span>
         )}
 
@@ -700,30 +799,30 @@ function KanbanCard({
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border transition-colors"
+            className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9.5px] font-semibold border transition-colors"
             style={{ background: 'var(--color-brand-glow)', borderColor: 'var(--color-brand)', color: 'var(--color-brand)' }}
           >
-            <span>Buka Link</span>
-            <ExternalLink size={9} />
+            <span>Link</span>
+            <ExternalLink size={8} />
           </a>
         )}
 
         {Object.entries(feature.metadata)
-          .filter(([k]) => !['status', 'priority', 'type', 'pic', 'deadline', 'image', 'images', 'thumbnail', 'cover', 'link', 'url', 'href', 'website'].includes(k.toLowerCase()))
+          .filter(([k]) => !['status', 'priority', 'type', 'pic', 'deadline', 'image', 'images', 'thumbnail', 'cover', 'link', 'url', 'href', 'website', 'todo', 'task'].includes(k.toLowerCase()))
           .map(([k, v]) => (
-            <span key={k} className="text-[10px] px-1.5 py-0.5 rounded font-mono" style={{ background: 'var(--color-surface)', color: 'var(--color-text-dim)' }}>
-              {k}: {v}
+            <span key={k} className="text-[9px] px-1.5 py-0.2 rounded border font-mono truncate max-w-[120px]" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-dim)' }}>
+              {k}:{v}
             </span>
           ))}
       </div>
 
       {config.showSubCount && feature.children.length > 0 && (
-        <div className="mt-2.5 pt-2 flex items-center justify-between border-t text-[10px]" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-dim)' }}>
+        <div className="mt-2 pt-1.5 flex items-center justify-between border-t text-[9.5px]" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-dim)' }}>
           <span className="flex items-center gap-1">
-            <Layers size={11} />
+            <Layers size={10} />
             {feature.children.length} Sub-items
           </span>
-          <ChevronRight size={11} />
+          <ChevronRight size={10} />
         </div>
       )}
     </div>
