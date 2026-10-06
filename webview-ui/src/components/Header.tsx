@@ -1,4 +1,4 @@
-import { Search, X, Network, Table as TableIcon, Columns, Calendar as CalendarIcon } from 'lucide-react'
+import { Search, X, Network, Table as TableIcon, Columns, Calendar as CalendarIcon, Plus } from 'lucide-react'
 import { useAppStore } from '../hooks/useAppStore'
 import type { ViewMode } from '../App'
 
@@ -69,8 +69,20 @@ export function Header({ currentView, onViewChange }: HeaderProps) {
 
       <div className="flex-1" />
 
+      {/* Button Tambah Fitur Baru */}
+      <button
+        type="button"
+        onClick={() => dispatch({ type: 'OPEN_NEW_FEATURE_MODAL' })}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all shadow-sm hover:brightness-110 active:scale-95"
+        style={{ background: 'var(--color-brand)', color: '#050c14' }}
+        title="Tambah Fitur Baru"
+      >
+        <Plus size={14} />
+        <span>Tambah Fitur</span>
+      </button>
+
       {state.fileName && (
-        <span className="text-[11px] truncate max-w-[160px]" style={{ color: 'var(--color-text-dim)' }} title={state.fileName}>
+        <span className="text-[11px] truncate max-w-[160px] hidden md:inline" style={{ color: 'var(--color-text-dim)' }} title={state.fileName}>
           {state.fileName}
         </span>
       )}

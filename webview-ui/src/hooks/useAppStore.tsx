@@ -24,6 +24,9 @@ export interface AppState {
   fileName: string | null
   features: FeatureNode[]
   selectedFeatureId: string | null
+  isDetailOpen: boolean
+  isNewFeatureModalOpen: boolean
+  newFeatureParentId: string | null
   searchQuery: string
   filters: AppFilters
   customStatuses: StatusDefinition[]
@@ -34,6 +37,10 @@ export interface AppState {
 export type AppAction =
   | { type: 'LOAD_CONTENT'; payload: { content: string; fileName: string } }
   | { type: 'SELECT_FEATURE'; payload: string | null }
+  | { type: 'OPEN_DETAIL'; payload?: string | null }
+  | { type: 'CLOSE_DETAIL' }
+  | { type: 'OPEN_NEW_FEATURE_MODAL'; payload?: string | null }
+  | { type: 'CLOSE_NEW_FEATURE_MODAL' }
   | { type: 'SET_SEARCH'; payload: string }
   | { type: 'SET_FILTER'; payload: AppFilters }
   | { type: 'UPDATE_FEATURE_NODE'; payload: { id: string; updates: Partial<FeatureNode> } }
@@ -53,6 +60,9 @@ const initialState: AppState = {
   fileName: null,
   features: [],
   selectedFeatureId: null,
+  isDetailOpen: false,
+  isNewFeatureModalOpen: false,
+  newFeatureParentId: null,
   searchQuery: '',
   filters: {},
   customStatuses: DEFAULT_STATUSES,
@@ -73,7 +83,39 @@ function reducer(state: AppState, action: AppAction): AppState {
     }
 
     case 'SELECT_FEATURE':
-      return { ...state, selectedFeatureId: action.payload }
+      return {
+        ...state,
+        selectedFeatureId: action.payload,
+        isDetailOpen: action.payload !== null,
+      }
+
+    case 'OPEN_DETAIL':
+      return {
+        ...state,
+        selectedFeatureId: action.payload ?? state.selectedFeatureId,
+        isDetailOpen: true,
+      }
+
+    case 'CLOSE_DETAIL':
+      return {
+        ...state,
+        isDetailOpen: false,
+        selectedFeatureId: null,
+      }
+
+    case 'OPEN_NEW_FEATURE_MODAL':
+      return {
+        ...state,
+        isNewFeatureModalOpen: true,
+        newFeatureParentId: action.payload ?? null,
+      }
+
+    case 'CLOSE_NEW_FEATURE_MODAL':
+      return {
+        ...state,
+        isNewFeatureModalOpen: false,
+        newFeatureParentId: null,
+      }
 
     case 'SET_SEARCH':
       return { ...state, searchQuery: action.payload }
@@ -93,6 +135,9 @@ function reducer(state: AppState, action: AppAction): AppState {
         ...state,
         features: addChildNodeInTree(state.features, action.payload.parentId, action.payload.node),
         selectedFeatureId: action.payload.node.id,
+        isDetailOpen: true,
+        isNewFeatureModalOpen: false,
+        newFeatureParentId: null,
         origin: 'local',
       }
 
@@ -101,6 +146,7 @@ function reducer(state: AppState, action: AppAction): AppState {
         ...state,
         features: deleteNodeInTree(state.features, action.payload.id),
         selectedFeatureId: state.selectedFeatureId === action.payload.id ? null : state.selectedFeatureId,
+        isDetailOpen: state.selectedFeatureId === action.payload.id ? false : state.isDetailOpen,
         origin: 'local',
       }
 

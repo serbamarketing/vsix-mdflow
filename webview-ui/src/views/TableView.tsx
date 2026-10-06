@@ -258,7 +258,15 @@ export function TableView() {
             Total: <strong style={{ color: 'var(--color-text)' }}>{visibleTreeRows.length}</strong> items
           </span>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => dispatch({ type: 'OPEN_NEW_FEATURE_MODAL' })}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold cursor-pointer transition-all shadow-sm hover:brightness-110 active:scale-95"
+              style={{ background: 'var(--color-brand)', color: '#050c14' }}
+              title="Tambah Item / Fitur Baru"
+            >
+              <Plus size={13} /> Tambah Item
+            </button>
             <button
               onClick={expandAll}
               className="flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs cursor-pointer hover:bg-[var(--color-surface-2)] transition-colors"

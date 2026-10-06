@@ -37,19 +37,28 @@ export class MdflowPanel {
     }
 
     if (MdflowPanel.currentPanel) {
-      MdflowPanel.currentPanel._panel.reveal(vscode.ViewColumn.One);
+      MdflowPanel.currentPanel._panel.reveal(MdflowPanel.currentPanel._panel.viewColumn);
       if (document) {
         MdflowPanel.currentPanel._setDocument(document);
+      } else {
+        // Jika tidak ada dokumen baru yang dikirim, refresh dokumen yang sedang ada
+        MdflowPanel.currentPanel._updateWebviewContent(true);
       }
       return;
     }
 
+    // Gunakan Beside jika ada active editor agar bisa split view, atau ViewColumn.One
+    const targetColumn = vscode.window.activeTextEditor
+      ? vscode.ViewColumn.Beside
+      : vscode.ViewColumn.One;
+
     const panel = vscode.window.createWebviewPanel(
       'mdflowView',
       'Mdflow View',
-      vscode.ViewColumn.One,
+      targetColumn,
       {
         enableScripts: true,
+        retainContextWhenHidden: true,
         localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'webview-ui/dist')],
       }
     );
@@ -78,7 +87,7 @@ export class MdflowPanel {
         <head>
           <meta charset="UTF-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src ${webview.cspSource} https: http: data:; font-src ${webview.cspSource} https:;">
           <link rel="stylesheet" type="text/css" href="${stylesUri}">
           <title>Mdflow</title>
         </head>
@@ -101,7 +110,8 @@ export class MdflowPanel {
             return;
           case 'ready':
             this._isReady = true;
-            this._updateWebviewContent();
+            // Force pengiriman isi file saat webview siap
+            this._updateWebviewContent(true);
             return;
           case 'save':
             this._applyEditFromWebview(text);
@@ -114,6 +124,7 @@ export class MdflowPanel {
   }
 
   private _setupEventListeners() {
+    // Ketika isi text document berubah di VS Code (misal user mengetik di editor .md)
     vscode.workspace.onDidChangeTextDocument(
       (event) => {
         if (this._document && event.document.uri.toString() === this._document.uri.toString()) {
@@ -125,10 +136,25 @@ export class MdflowPanel {
       this._disposables
     );
 
+    // Ketika user berpindah editor Markdown di VS Code
     vscode.window.onDidChangeActiveTextEditor(
       (editor) => {
-        if (editor?.document.languageId === 'markdown') {
-          this._setDocument(editor.document);
+        // Jangan ganti document jika editor undefined (misal user mengklik webview tab)
+        if (editor?.document && editor.document.languageId === 'markdown') {
+          if (!this._document || editor.document.uri.toString() !== this._document.uri.toString()) {
+            this._setDocument(editor.document);
+          }
+        }
+      },
+      null,
+      this._disposables
+    );
+
+    // Ketika tab webview kembali terlihat (visible setelah berpindah tab)
+    this._panel.onDidChangeViewState(
+      (e) => {
+        if (e.webviewPanel.visible && this._document) {
+          this._updateWebviewContent(true);
         }
       },
       null,
@@ -138,15 +164,15 @@ export class MdflowPanel {
 
   private _setDocument(document: vscode.TextDocument) {
     this._document = document;
-    this._updateWebviewContent();
+    this._updateWebviewContent(true);
   }
 
-  private _updateWebviewContent() {
+  private _updateWebviewContent(force = false) {
     if (!this._isReady || !this._document) {
       return;
     }
     const text = this._document.getText();
-    if (text === this._lastSentText) {
+    if (!force && text === this._lastSentText) {
       return;
     }
     this._lastSentText = text;
@@ -171,6 +197,13 @@ export class MdflowPanel {
     );
     edit.replace(this._document.uri, fullRange, text);
     this._lastSentText = text;
-    await vscode.workspace.applyEdit(edit);
+    const applied = await vscode.workspace.applyEdit(edit);
+    if (applied) {
+      try {
+        await this._document.save();
+      } catch (err) {
+        console.error('Failed to save document:', err);
+      }
+    }
   }
 }
