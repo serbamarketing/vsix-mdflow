@@ -8,7 +8,7 @@ import { CalendarView } from './views/CalendarView'
 import { DetailPanel } from './components/feature/DetailPanel'
 import { NewFeatureModal } from './components/feature/NewFeatureModal'
 import { vscode } from './utils/vscode'
-import { flattenFeatures, generateFeatureId, type FeatureNode } from './models/feature'
+import { flattenFeatures } from './models/feature'
 import './App.css'
 
 export type ViewMode = 'mindmap' | 'table' | 'kanban' | 'calendar'
@@ -60,31 +60,18 @@ function AppBody() {
       // 3. Proteksi shortcut sistem & editor: jika ada Ctrl / Alt / Meta -> JANGAN interupsi!
       if (e.ctrlKey || e.altKey || e.metaKey) return
 
-      // Jika tidak ada item aktif yang terpilih, shortcut manipulasi node tidak aktif
-      if (!state.selectedFeatureId) return
-
-      // 4. Shortcut "N" atau "n": Tambah Sub-item ke item yang sedang aktif
+      // 4. Shortcut "N" atau "n": Buka modal form tambah Sub-item (jika ada item aktif) atau Fitur Baru
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault()
-        const flat = flattenFeatures(state.features)
-        const active = flat.find((f) => f.id === state.selectedFeatureId)
-        if (active) {
-          const newId = generateFeatureId('Sub-item')
-          const newNode: FeatureNode = {
-            id: newId,
-            title: 'Sub-item',
-            level: active.level + 1,
-            description: '',
-            metadata: {},
-            children: [],
-          }
-          dispatch({
-            type: 'ADD_FEATURE_NODE',
-            payload: { parentId: active.id, node: newNode },
-          })
-        }
+        dispatch({
+          type: 'OPEN_NEW_FEATURE_MODAL',
+          payload: state.selectedFeatureId || null,
+        })
         return
       }
+
+      // Jika tidak ada item aktif yang terpilih, shortcut manipulasi node tidak aktif
+      if (!state.selectedFeatureId) return
 
       // 5. Shortcut "D" atau "d": Hapus item yang sedang aktif
       if (e.key === 'd' || e.key === 'D') {

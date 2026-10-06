@@ -225,22 +225,34 @@ body {
 
 /* Markmap Active / Currently Edited Node Highlight */
 .markmap-node-active text,
-.markmap-node-active .markmap-foreign,
-.markmap-node-active div,
-.markmap-node-active span {
+.markmap-node-active .markmap-foreign {
   fill: #0ef38d !important;
   color: #0ef38d !important;
-  font-weight: 800 !important;
-  text-shadow: 0 0 10px rgba(14, 243, 141, 0.4);
+  font-weight: 700 !important;
+}
+
+.markmap-node-active .markmap-foreign {
+  overflow: visible !important;
+}
+
+.markmap-node-active .markmap-foreign > div {
+  outline: 2px solid #0ef38d !important;
+  outline-offset: 3px !important;
+  background: rgba(14, 243, 141, 0.14) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 0 16px rgba(14, 243, 141, 0.4) !important;
+  padding: 1px 6px !important;
+  margin: -1px -6px !important;
+  display: inline-block !important;
+  backdrop-filter: blur(4px);
 }
 
 .markmap-node-active circle {
-  r: 9px !important;
+  r: 8px !important;
   stroke: #0ef38d !important;
-  stroke-width: 4px !important;
+  stroke-width: 3.5px !important;
   fill: #05d677 !important;
-  filter: drop-shadow(0 0 8px #0ef38d) drop-shadow(0 0 16px rgba(14, 243, 141, 0.5)) !important;
-  animation: pulse-ring 1.2s infinite alternate;
+  filter: drop-shadow(0 0 6px rgba(14, 243, 141, 0.7)) !important;
 }
 
 .markmap-node-active line {
@@ -249,7 +261,3 @@ body {
   filter: drop-shadow(0 0 6px #0ef38d) !important;
 }
 
-@keyframes pulse-ring {
-  0% { transform: scale(1); }
-  100% { transform: scale(1.15); }
-}

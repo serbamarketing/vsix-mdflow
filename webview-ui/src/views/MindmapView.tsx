@@ -80,39 +80,45 @@ function buildMetaBadgeString(node: FeatureNode, config: ViewVisibilityOptions):
   return `<span class="mdflow-badge-wrap">${badges.join('')}</span>`
 }
 
+function buildNodeLabel(node: FeatureNode, config: ViewVisibilityOptions): string {
+  let label = node.title
+
+  const badgeStr = buildMetaBadgeString(node, config)
+  if (badgeStr) {
+    label += ` ${badgeStr}`
+  }
+
+  const imgUrl = node.metadata.image || node.metadata.img || node.metadata.thumbnail || node.metadata.cover
+  if (config.showImage && imgUrl) {
+    label += `<br><img src="${imgUrl}" style="max-width: 140px; max-height: 80px; border-radius: 8px; margin-top: 4px; display: inline-block; border: 1px solid rgba(255,255,255,0.2);" onError="this.style.display='none'" />`
+  }
+
+  const linkUrl = node.metadata.link || node.metadata.url || node.metadata.href || node.metadata.website
+  if (config.showLink && linkUrl) {
+    const fullLink = linkUrl.startsWith('http') ? linkUrl : `https://${linkUrl}`
+    label += `<br><a href="${fullLink}" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; font-size: 11px; font-weight: bold; text-decoration: underline;">🔗 Buka Link</a>`
+  }
+
+  if (config.showDescription && node.description && node.description.trim()) {
+    const cleanDesc = node.description
+      .replace(/^\s*\*\*(?:desc|deskripsi):\*\*\s*/i, '')
+      .replace(/^\s*\*\*(?:desc|deskripsi)\*\*:\s*/i, '')
+      .replace(/^\s*(?:desc|deskripsi):\s*/i, '')
+      .trim()
+    if (cleanDesc) {
+      const shortDesc = cleanDesc.replace(/\n/g, ' ').slice(0, 55)
+      label += `<br><span class="mdflow-desc-text">📝 ${shortDesc}${cleanDesc.length > 55 ? '...' : ''}</span>`
+    }
+  }
+
+  return label
+}
+
 function featuresToMarkdown(nodes: FeatureNode[], config: ViewVisibilityOptions, depth = 0): string {
   return nodes
     .map((node) => {
       const indent = '  '.repeat(depth)
-      let label = node.title
-
-      const badgeStr = buildMetaBadgeString(node, config)
-      if (badgeStr) {
-        label += ` ${badgeStr}`
-      }
-
-      const imgUrl = node.metadata.image || node.metadata.img || node.metadata.thumbnail || node.metadata.cover
-      if (config.showImage && imgUrl) {
-        label += `<br><img src="${imgUrl}" style="max-width: 140px; max-height: 80px; border-radius: 8px; margin-top: 4px; display: inline-block; border: 1px solid rgba(255,255,255,0.2);" onError="this.style.display='none'" />`
-      }
-
-      const linkUrl = node.metadata.link || node.metadata.url || node.metadata.href || node.metadata.website
-      if (config.showLink && linkUrl) {
-        const fullLink = linkUrl.startsWith('http') ? linkUrl : `https://${linkUrl}`
-        label += `<br><a href="${fullLink}" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; font-size: 11px; font-weight: bold; text-decoration: underline;">🔗 Buka Link</a>`
-      }
-
-      if (config.showDescription && node.description && node.description.trim()) {
-        const cleanDesc = node.description
-          .replace(/^\s*\*\*(?:desc|deskripsi):\*\*\s*/i, '')
-          .replace(/^\s*(?:desc|deskripsi):\s*/i, '')
-          .trim()
-        if (cleanDesc) {
-          const shortDesc = cleanDesc.replace(/\n/g, ' ').slice(0, 45)
-          label += `<br><span class="mdflow-desc-text">📝 ${shortDesc}${cleanDesc.length > 45 ? '...' : ''}</span>`
-        }
-      }
-
+      const label = buildNodeLabel(node, config)
       const header = `${indent}- ${label}`
       const children = featuresToMarkdown(node.children, config, depth + 1)
       return children ? `${header}\n${children}` : header
@@ -170,9 +176,8 @@ export function MindmapView() {
     if (state.features.length === 0) return ''
     const root = state.features.length === 1 ? state.features[0] : null
     if (root) {
-      const badgeStr = buildMetaBadgeString(root, displayConfig)
-      const rootTitle = root.title + (badgeStr ? ` ${badgeStr}` : '')
-      return `# ${rootTitle}\n${featuresToMarkdown(root.children, displayConfig, 0)}`
+      const rootLabel = buildNodeLabel(root, displayConfig)
+      return `# ${rootLabel}\n${featuresToMarkdown(root.children, displayConfig, 0)}`
     }
     return `# Project Map\n${featuresToMarkdown(state.features, displayConfig, 0)}`
   }, [state.features, displayConfig])

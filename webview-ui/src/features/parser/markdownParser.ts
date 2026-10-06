@@ -34,8 +34,10 @@ const COMMON_METADATA_KEYS = [
 function extractDescFromText(text: string): string | null {
   const match = text.match(/^\*\*(?:desc|deskripsi):\*\*\s*(.*)$/is)
   if (match) return match[1].trim()
-  const match2 = text.match(/^(?:desc|deskripsi):\s*(.*)$/is)
+  const match2 = text.match(/^\*\*(?:desc|deskripsi)\*\*:\s*(.*)$/is)
   if (match2) return match2[1].trim()
+  const match3 = text.match(/^(?:desc|deskripsi):\s*(.*)$/is)
+  if (match3) return match3[1].trim()
   return null
 }
 
