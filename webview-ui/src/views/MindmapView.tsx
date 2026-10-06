@@ -19,7 +19,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react'
 import { useAppStore } from '../hooks/useAppStore'
-import { flattenFeatures, generateFeatureId } from '../models/feature'
+import { flattenFeatures, generateFeatureId, isTodoItem } from '../models/feature'
 import type { FeatureNode, ViewVisibilityOptions } from '../models/feature'
 
 const transformer = new Transformer()
@@ -32,40 +32,63 @@ interface ContextMenuState {
   node: FeatureNode | null
 }
 
+function buildMetaBadgeString(node: FeatureNode, config: ViewVisibilityOptions): string {
+  const badges: string[] = []
+
+  if (config.showStatus && node.metadata.status) {
+    const s = node.metadata.status.toLowerCase()
+    let dotColor = '#94a3b8'
+    if (s.includes('done') || s.includes('selesai')) dotColor = '#22c55e'
+    else if (s.includes('prog') || s.includes('jalan')) dotColor = '#eab308'
+    else if (s.includes('todo') || s.includes('pending') || s.includes('open')) dotColor = '#ef4444'
+
+    badges.push(`<span class="mdflow-badge"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${dotColor};margin-right:3px;"></span>${node.metadata.status}</span>`)
+  }
+
+  if (config.showPriority && node.metadata.priority) {
+    const p = node.metadata.priority.toLowerCase()
+    let pColor = '#94a3b8'
+    if (p.includes('high') || p.includes('urgent') || p.includes('tinggi')) pColor = '#ef4444'
+    else if (p.includes('med') || p.includes('sedang')) pColor = '#eab308'
+    else if (p.includes('low') || p.includes('rendah')) pColor = '#3b82f6'
+
+    badges.push(`<span class="mdflow-badge" style="color:${pColor};">${node.metadata.priority}</span>`)
+  }
+
+  if (config.showPic && node.metadata.pic) {
+    badges.push(`<span class="mdflow-badge">👤 ${node.metadata.pic}</span>`)
+  }
+
+  if (config.showDeadline && node.metadata.deadline) {
+    badges.push(`<span class="mdflow-badge">📅 ${node.metadata.deadline}</span>`)
+  }
+
+  if (config.showType && node.metadata.type) {
+    badges.push(`<span class="mdflow-badge">🏷️ ${node.metadata.type}</span>`)
+  }
+
+  const excludeFromCustom = ['status', 'priority', 'pic', 'deadline', 'type', 'image', 'img', 'thumbnail', 'cover', 'link', 'url', 'href', 'website', 'todo', 'task']
+  if (config.showCustomMeta !== false) {
+    for (const [k, v] of Object.entries(node.metadata)) {
+      if (v && !excludeFromCustom.includes(k.toLowerCase())) {
+        badges.push(`<span class="mdflow-badge">${k}: ${v}</span>`)
+      }
+    }
+  }
+
+  if (badges.length === 0) return ''
+  return `<span class="mdflow-badge-wrap">${badges.join('')}</span>`
+}
+
 function featuresToMarkdown(nodes: FeatureNode[], config: ViewVisibilityOptions, depth = 0): string {
   return nodes
     .map((node) => {
-      const prefix = '#'.repeat(depth + 2)
+      const indent = '  '.repeat(depth)
       let label = node.title
 
-      const metaBadges: string[] = []
-      if (config.showStatus && node.metadata.status) {
-        metaBadges.push(node.metadata.status)
-      }
-      if (config.showPriority && node.metadata.priority) {
-        metaBadges.push(node.metadata.priority)
-      }
-      if (config.showPic && node.metadata.pic) {
-        metaBadges.push(`👤 ${node.metadata.pic}`)
-      }
-      if (config.showDeadline && node.metadata.deadline) {
-        metaBadges.push(`📅 ${node.metadata.deadline}`)
-      }
-      if (config.showType && node.metadata.type) {
-        metaBadges.push(`🏷️ ${node.metadata.type}`)
-      }
-
-      const excludeFromCustom = ['status', 'priority', 'pic', 'deadline', 'type', 'image', 'img', 'thumbnail', 'cover', 'link', 'url', 'href', 'website']
-      if (config.showCustomMeta !== false) {
-        for (const [k, v] of Object.entries(node.metadata)) {
-          if (v && !excludeFromCustom.includes(k.toLowerCase())) {
-            metaBadges.push(`${k}: ${v}`)
-          }
-        }
-      }
-
-      if (metaBadges.length > 0) {
-        label += ` \`${metaBadges.join(' | ')}\``
+      const badgeStr = buildMetaBadgeString(node, config)
+      if (badgeStr) {
+        label += ` ${badgeStr}`
       }
 
       const imgUrl = node.metadata.image || node.metadata.img || node.metadata.thumbnail || node.metadata.cover
@@ -80,11 +103,17 @@ function featuresToMarkdown(nodes: FeatureNode[], config: ViewVisibilityOptions,
       }
 
       if (config.showDescription && node.description && node.description.trim()) {
-        const shortDesc = node.description.replace(/\n/g, ' ').slice(0, 60)
-        label += `<br><span style="font-size: 11px; opacity: 0.65; font-weight: normal;">${shortDesc}${node.description.length > 60 ? '...' : ''}</span>`
+        const cleanDesc = node.description
+          .replace(/^\s*\*\*(?:desc|deskripsi):\*\*\s*/i, '')
+          .replace(/^\s*(?:desc|deskripsi):\s*/i, '')
+          .trim()
+        if (cleanDesc) {
+          const shortDesc = cleanDesc.replace(/\n/g, ' ').slice(0, 45)
+          label += `<br><span class="mdflow-desc-text">📝 ${shortDesc}${cleanDesc.length > 45 ? '...' : ''}</span>`
+        }
       }
 
-      const header = `${prefix} ${label}`
+      const header = `${indent}- ${label}`
       const children = featuresToMarkdown(node.children, config, depth + 1)
       return children ? `${header}\n${children}` : header
     })
@@ -132,14 +161,17 @@ export function MindmapView() {
   }
 
   const allFlat = useMemo(() => flattenFeatures(state.features), [state.features])
+  const activeNode = useMemo(
+    () => (state.selectedFeatureId ? allFlat.find((f) => f.id === state.selectedFeatureId) : null),
+    [state.selectedFeatureId, allFlat]
+  )
 
   const markdownStr = useMemo(() => {
     if (state.features.length === 0) return ''
     const root = state.features.length === 1 ? state.features[0] : null
     if (root) {
-      const metaBadges: string[] = []
-      if (displayConfig.showStatus && root.metadata.status) metaBadges.push(root.metadata.status)
-      const rootTitle = root.title + (metaBadges.length > 0 ? ` \`${metaBadges.join(' | ')}\`` : '')
+      const badgeStr = buildMetaBadgeString(root, displayConfig)
+      const rootTitle = root.title + (badgeStr ? ` ${badgeStr}` : '')
       return `# ${rootTitle}\n${featuresToMarkdown(root.children, displayConfig, 0)}`
     }
     return `# Project Map\n${featuresToMarkdown(state.features, displayConfig, 0)}`
@@ -244,6 +276,23 @@ export function MindmapView() {
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedNodeIds, allFlat])
+
+  useEffect(() => {
+    const svgEl = svgRef.current
+    if (!svgEl) return
+
+    svgEl.querySelectorAll('.markmap-node-active').forEach((el) => el.classList.remove('markmap-node-active'))
+
+    if (!state.selectedFeatureId) return
+
+    svgEl.querySelectorAll('.markmap-node').forEach((nodeEl) => {
+      const node = findNodeFromElement(nodeEl)
+      if (node && node.id === state.selectedFeatureId) {
+        nodeEl.classList.add('markmap-node-active')
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.selectedFeatureId, allFlat, markdownStr])
 
   useEffect(() => {
     const svgEl = svgRef.current
@@ -402,16 +451,23 @@ export function MindmapView() {
   }
 
   const handleAddSubItemFromMenu = (node: FeatureNode) => {
-    const childId = generateFeatureId('Sub-item')
-    const newNode: FeatureNode = {
-      id: childId,
-      title: 'Sub-item Baru',
-      level: node.level + 1,
-      description: '',
-      metadata: {},
-      children: [],
+    dispatch({ type: 'OPEN_NEW_FEATURE_MODAL', payload: node.id })
+  }
+
+  const handleToggleTodoFromMenu = (node: FeatureNode) => {
+    const isTodo = isTodoItem(node)
+    const updatedMeta = { ...node.metadata }
+    if (isTodo) {
+      updatedMeta.todo = 'false'
+      delete updatedMeta.status
+    } else {
+      updatedMeta.todo = 'true'
+      if (!updatedMeta.status) updatedMeta.status = '🔴 Todo'
     }
-    dispatch({ type: 'ADD_FEATURE_NODE', payload: { parentId: node.id, node: newNode } })
+    dispatch({
+      type: 'UPDATE_FEATURE_NODE',
+      payload: { id: node.id, updates: { metadata: updatedMeta } },
+    })
   }
 
   const handleSetStatusFromMenu = (node: FeatureNode, status: string) => {
@@ -496,6 +552,23 @@ export function MindmapView() {
 
   return (
     <div className="flex-1 flex flex-col relative overflow-hidden select-none">
+      {/* Active Selected Node Floating Badge */}
+      {activeNode && (
+        <div
+          onClick={() => dispatch({ type: 'OPEN_DETAIL', payload: activeNode.id })}
+          className="absolute top-4 left-4 z-20 flex items-center gap-2 px-3.5 py-1.5 rounded-2xl border shadow-xl cursor-pointer transition-all hover:scale-105 active:scale-95 glass-panel"
+          style={{ borderColor: 'var(--color-brand)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+          title="Klik untuk membuka panel detail & edit item ini"
+        >
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-[11px] font-bold" style={{ color: 'var(--color-brand)' }}>Sedang Aktif:</span>
+          <span className="text-xs font-bold truncate max-w-[200px]" style={{ color: 'var(--color-text)' }}>{activeNode.title}</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold" style={{ background: 'var(--color-surface-2)', color: 'var(--color-text-dim)' }}>
+            H{activeNode.level}
+          </span>
+        </div>
+      )}
+
       <div className="absolute bottom-6 right-6 z-20 flex flex-col items-center gap-2">
         {isToolbarCollapsed ? (
           <button
@@ -867,6 +940,24 @@ export function MindmapView() {
                 style={{ color: 'var(--color-text)' }}
               >
                 <Plus size={13} className="text-emerald-400" /> Tambah Sub-item
+              </button>
+
+              <button
+                onClick={() => handleToggleTodoFromMenu(contextMenu.node!)}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-left cursor-pointer transition-colors hover:bg-[var(--color-surface-2)]"
+                style={{ color: isTodoItem(contextMenu.node!) ? 'var(--color-brand)' : 'var(--color-text-dim)' }}
+              >
+                {isTodoItem(contextMenu.node!) ? (
+                  <>
+                    <Check size={13} style={{ color: 'var(--color-brand)' }} />
+                    <span>✓ Bagian Dari To Do (Task)</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus size={13} style={{ color: 'var(--color-text-dim)' }} />
+                    <span>Tandai Sebagai To Do</span>
+                  </>
+                )}
               </button>
 
               <div className="h-px my-1" style={{ background: 'var(--color-border)' }} />

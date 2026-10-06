@@ -6,19 +6,19 @@ import type { FeatureNode } from '../../models/feature'
 
 export function NewFeatureModal() {
   const { state, dispatch } = useAppStore()
+  const parentNode = state.newFeatureParentId
+    ? findFeatureById(state.features, state.newFeatureParentId)
+    : null
+
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [status, setStatus] = useState('🔴 Todo')
-  const [priority, setPriority] = useState('🔴 High')
+  const [status, setStatus] = useState(parentNode ? '' : '🔴 Todo')
+  const [priority, setPriority] = useState('')
   const [pic, setPic] = useState('')
   const [deadline, setDeadline] = useState('')
   const [type, setType] = useState('')
 
   if (!state.isNewFeatureModalOpen) return null
-
-  const parentNode = state.newFeatureParentId
-    ? findFeatureById(state.features, state.newFeatureParentId)
-    : null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,7 +28,12 @@ export function NewFeatureModal() {
     const level = parentNode ? parentNode.level + 1 : 1
 
     const meta: Record<string, string> = {}
-    if (status) meta.status = status
+    if (status) {
+      meta.status = status
+      meta.todo = 'true'
+    } else {
+      meta.todo = 'false'
+    }
     if (priority) meta.priority = priority
     if (pic.trim()) meta.pic = pic.trim()
     if (deadline.trim()) meta.deadline = deadline.trim()
@@ -127,6 +132,7 @@ export function NewFeatureModal() {
                   color: 'var(--color-text)',
                 }}
               >
+                <option value="">— Tanpa Status (Bukan To Do)</option>
                 {state.customStatuses.map((st) => (
                   <option key={st.id} value={st.label}>
                     {st.label}

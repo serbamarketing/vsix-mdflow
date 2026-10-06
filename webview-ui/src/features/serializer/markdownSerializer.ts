@@ -10,9 +10,14 @@ function serializeNode(node: FeatureNode, level: number): string {
   // Heading
   chunks.push(`${repeat('#', level)} ${node.title.trim()}`)
 
-  // Description
+  // Description with **Desc:**
   if (node.description && node.description.trim()) {
-    chunks.push(node.description.trim())
+    const raw = node.description.trim()
+    if (/^\*\*(?:desc|deskripsi):\*\*/i.test(raw)) {
+      chunks.push(raw)
+    } else {
+      chunks.push(`**Desc:** ${raw}`)
+    }
   }
 
   // Metadata

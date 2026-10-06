@@ -1,4 +1,5 @@
-import { Search, X, Network, Table as TableIcon, Columns, Calendar as CalendarIcon, Plus } from 'lucide-react'
+import { Search, X, Network, Table as TableIcon, Columns, Calendar as CalendarIcon, Plus, Sun, Moon } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { useAppStore } from '../hooks/useAppStore'
 import type { ViewMode } from '../App'
 
@@ -16,6 +17,36 @@ const viewTabs: { key: ViewMode; label: string; icon: typeof Network }[] = [
 
 export function Header({ currentView, onViewChange }: HeaderProps) {
   const { state, dispatch } = useAppStore()
+
+  const [isLightMode, setIsLightMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('mdflow_theme')
+      if (saved) return saved === 'light'
+      return document.documentElement.classList.contains('theme-light')
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    try {
+      if (isLightMode) {
+        document.documentElement.classList.remove('theme-dark')
+        document.documentElement.classList.add('theme-light')
+        localStorage.setItem('mdflow_theme', 'light')
+      } else {
+        document.documentElement.classList.remove('theme-light')
+        document.documentElement.classList.add('theme-dark')
+        localStorage.setItem('mdflow_theme', 'dark')
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [isLightMode])
+
+  const toggleTheme = () => {
+    setIsLightMode((prev) => !prev)
+  }
 
   return (
     <header
@@ -79,6 +110,21 @@ export function Header({ currentView, onViewChange }: HeaderProps) {
       >
         <Plus size={14} />
         <span>Tambah Fitur</span>
+      </button>
+
+      {/* 1 Button Switch Theme Dark / Light */}
+      <button
+        type="button"
+        onClick={toggleTheme}
+        className="flex items-center justify-center w-8 h-8 rounded-xl border cursor-pointer transition-all hover:scale-105 active:scale-95 shadow-sm"
+        style={{
+          background: 'var(--color-surface-2)',
+          borderColor: 'var(--color-border)',
+          color: isLightMode ? '#ea580c' : '#38bdf8',
+        }}
+        title={isLightMode ? 'Ganti ke Mode Gelap (Dark Mode)' : 'Ganti ke Mode Terang (Light Mode)'}
+      >
+        {isLightMode ? <Sun size={15} /> : <Moon size={15} />}
       </button>
 
       {state.fileName && (

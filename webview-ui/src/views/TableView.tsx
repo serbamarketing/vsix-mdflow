@@ -17,7 +17,7 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { useAppStore } from '../hooks/useAppStore'
-import { getStatusColor, getAllMetadataKeys, generateFeatureId, flattenFeatures } from '../models/feature'
+import { getStatusColor, getAllMetadataKeys, flattenFeatures } from '../models/feature'
 import type { FeatureNode, StatusDefinition } from '../models/feature'
 
 type SortDir = 'asc' | 'desc'
@@ -687,16 +687,7 @@ function TreeTableRow({
 
   const handleAddSub = (e: React.MouseEvent) => {
     e.stopPropagation()
-    const newId = generateFeatureId('Sub-item')
-    const newNode: FeatureNode = {
-      id: newId,
-      title: 'Sub-item Baru',
-      level: node.level + 1,
-      description: '',
-      metadata: {},
-      children: [],
-    }
-    dispatch({ type: 'ADD_FEATURE_NODE', payload: { parentId: node.id, node: newNode } })
+    dispatch({ type: 'OPEN_NEW_FEATURE_MODAL', payload: node.id })
   }
 
   return (
@@ -709,11 +700,11 @@ function TreeTableRow({
       onClick={onSelect}
       className={`cursor-grab active:cursor-grabbing transition-all duration-150 border-b select-none group ${
         isDragOver ? 'ring-2 ring-indigo-400 bg-indigo-950/40' : ''
-      } ${isChecked ? 'bg-indigo-950/30' : ''}`}
+      } ${isChecked ? 'bg-indigo-950/30' : ''} ${isSelected ? 'border-l-4 border-l-[var(--color-brand)]' : ''}`}
       style={{
         opacity: isBeingDragged ? 0.35 : 1,
         borderColor: isDragOver ? 'var(--color-primary)' : 'var(--color-border)',
-        background: isSelected ? 'var(--color-surface-2)' : isChecked ? 'rgba(99, 102, 241, 0.12)' : 'transparent',
+        background: isSelected ? 'rgba(14, 243, 141, 0.12)' : isChecked ? 'rgba(99, 102, 241, 0.12)' : 'transparent',
       }}
     >
       <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>

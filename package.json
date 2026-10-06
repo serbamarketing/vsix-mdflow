@@ -8,7 +8,7 @@
     "url": "https://github.com/serbamarketing/vsix-mdflow"
   },
   "icon": "assets/logo.png",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "engines": {
     "vscode": "^1.75.0"
   },
@@ -20,7 +20,7 @@
     "commands": [
       {
         "command": "mdflow.openView",
-        "title": "MD Flow SE : View Mode"
+        "title": "MDFlow Viewer : View Mode"
       }
     ],
     "menus": {

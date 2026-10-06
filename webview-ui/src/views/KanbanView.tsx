@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Plus, User, Calendar, Tag, ChevronRight, Layers, Check, LayoutGrid, Trash2, ChevronUp, ChevronDown, ExternalLink } from 'lucide-react'
+import { Plus, User, Calendar, Tag, ChevronRight, Layers, Check, LayoutGrid, Trash2, ChevronUp, ChevronDown, ExternalLink, CheckSquare } from 'lucide-react'
 import { useAppStore } from '../hooks/useAppStore'
-import { flattenFeatures, getStatusColor, generateFeatureId } from '../models/feature'
+import { flattenFeatures, getStatusColor, generateFeatureId, isTodoItem } from '../models/feature'
 import type { FeatureNode, StatusDefinition } from '../models/feature'
 
 type GroupByType = 'status' | 'priority' | 'pic' | 'type'
@@ -9,6 +9,7 @@ type GroupByType = 'status' | 'priority' | 'pic' | 'type'
 export function KanbanView() {
   const { state, dispatch } = useAppStore()
   const [groupBy, setGroupBy] = useState<GroupByType>('status')
+  const [onlyTodoItems, setOnlyTodoItems] = useState(true)
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
   const [newStatusName, setNewStatusName] = useState('')
@@ -73,7 +74,9 @@ export function KanbanView() {
       map[col.id] = []
     }
 
-    for (const f of allFlat) {
+    const items = onlyTodoItems ? allFlat.filter((f) => isTodoItem(f)) : allFlat
+
+    for (const f of items) {
       if (groupBy === 'priority') {
         const p = f.metadata.priority?.trim()
         if (p && map[p]) map[p].push(f)
@@ -106,7 +109,7 @@ export function KanbanView() {
       }
     }
     return map
-  }, [allFlat, columns, groupBy, state.customStatuses])
+  }, [allFlat, columns, groupBy, state.customStatuses, onlyTodoItems])
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     e.dataTransfer.setData('text/plain', id)
@@ -263,16 +266,45 @@ export function KanbanView() {
               <option value="type">Type</option>
             </select>
           </div>
-
-          <span style={{ color: 'var(--color-text-dim)' }}>
-            Total Kartu: <strong style={{ color: 'var(--color-text)' }}>{allFlat.length}</strong>
-          </span>
-          <span className="hidden sm:inline text-slate-400 text-[10px]">
-            🖱️ <em>Klik kanan kartu untuk menu tindakan cepat & ubah urutan (order)</em>
-          </span>
         </div>
 
         <div className="flex items-center gap-2 relative">
+          {/* Switcher Filter To Do vs Tree */}
+          <div className="flex items-center gap-1 p-1 rounded-xl border" style={{ background: 'var(--color-surface-2)', borderColor: 'var(--color-border)' }}>
+            <button
+              type="button"
+              onClick={() => setOnlyTodoItems(true)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                onlyTodoItems
+                  ? 'bg-[var(--color-brand)] text-slate-950 font-bold shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Hanya tampilkan item yang merupakan To Do / Task"
+            >
+              <CheckSquare size={13} />
+              <span>Hanya Item To Do</span>
+              <span className="text-[10px] px-1 py-0.2 rounded-full bg-slate-950/20">
+                {allFlat.filter((f) => isTodoItem(f)).length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setOnlyTodoItems(false)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                !onlyTodoItems
+                  ? 'bg-[var(--color-brand)] text-slate-950 font-bold shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Tampilkan semua item termasuk cabang/kategori pohon"
+            >
+              <Layers size={13} />
+              <span>Semua Item Tree</span>
+              <span className="text-[10px] px-1 py-0.2 rounded-full bg-slate-950/20">
+                {allFlat.length}
+              </span>
+            </button>
+          </div>
           <div className="relative">
             <button
               onClick={() => setIsBadgeDropdownOpen(!isBadgeDropdownOpen)}
@@ -519,6 +551,37 @@ export function KanbanView() {
 
             <div className="h-px bg-slate-800 my-1" />
             <button
+              onClick={() => {
+                const isTodo = isTodoItem(contextMenu.feature)
+                const updatedMeta = { ...contextMenu.feature.metadata }
+                if (isTodo) {
+                  updatedMeta.todo = 'false'
+                  delete updatedMeta.status
+                } else {
+                  updatedMeta.todo = 'true'
+                  if (!updatedMeta.status) updatedMeta.status = '🔴 Todo'
+                }
+                dispatch({
+                  type: 'UPDATE_FEATURE_NODE',
+                  payload: { id: contextMenu.feature.id, updates: { metadata: updatedMeta } },
+                })
+                setContextMenu(null)
+              }}
+              className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-left cursor-pointer transition-colors"
+              style={{ color: isTodoItem(contextMenu.feature) ? '#f43f5e' : 'var(--color-brand)' }}
+            >
+              {isTodoItem(contextMenu.feature) ? (
+                <>
+                  <Trash2 size={13} /> Keluarkan dari To Do (Kategori Saja)
+                </>
+              ) : (
+                <>
+                  <Check size={13} /> Masukkan ke To Do (Task)
+                </>
+              )}
+            </button>
+
+            <button
               onClick={() => { handleDeleteCard(contextMenu.feature); setContextMenu(null) }}
               className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-left cursor-pointer hover:bg-red-500/10 text-red-400"
             >
@@ -570,11 +633,13 @@ function KanbanCard({
       onDragEnd={onDragEnd}
       onClick={onClick}
       onContextMenu={onContextMenu}
-      className={`group relative p-3.5 rounded-xl border cursor-grab active:cursor-grabbing transition-all duration-150 select-none ${isSelected ? 'ring-2 ring-indigo-500 shadow-md' : 'hover:border-slate-500'}`}
+      className={`group relative p-3.5 rounded-xl border cursor-grab active:cursor-grabbing transition-all duration-150 select-none ${
+        isSelected ? 'ring-2 ring-emerald-400 shadow-lg shadow-emerald-500/20' : 'hover:border-slate-500'
+      }`}
       style={{
         opacity: isBeingDragged ? 0.4 : 1,
         background: isSelected ? 'var(--color-surface-3)' : 'var(--color-surface-2)',
-        borderColor: isSelected ? 'var(--color-primary)' : 'var(--color-border)',
+        borderColor: isSelected ? 'var(--color-brand)' : 'var(--color-border)',
       }}
     >
       {(config.showImage !== false) && (feature.metadata.image || feature.metadata.images || feature.metadata.thumbnail || feature.metadata.cover) && (

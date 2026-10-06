@@ -120,6 +120,13 @@ export function findFeatureById(nodes: FeatureNode[], id: string): FeatureNode |
   return null
 }
 
+export function isTodoItem(node: FeatureNode): boolean {
+  if (node.metadata.todo === 'false' || node.metadata.task === 'false') return false
+  if (node.metadata.todo === 'true' || node.metadata.task === 'true') return true
+  const s = node.metadata.status?.trim()
+  return Boolean(s && s !== '— Tanpa Status' && s !== 'no-status' && s !== 'none')
+}
+
 export function getAllMetadataKeys(nodes: FeatureNode[]): string[] {
   const keys = new Set<string>()
   const flat = flattenFeatures(nodes)
@@ -131,7 +138,7 @@ export function getAllMetadataKeys(nodes: FeatureNode[]): string[] {
     }
   }
 
-  const defaultKeys = ['status', 'priority', 'type', 'pic', 'deadline', 'image', 'link']
+  const defaultKeys = ['status', 'priority', 'type', 'pic', 'deadline', 'image', 'link', 'todo', 'task']
   for (const dk of defaultKeys) {
     keys.add(dk)
   }

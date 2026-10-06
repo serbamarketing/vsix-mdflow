@@ -35,6 +35,36 @@
   --color-none: #64748b;
 }
 
+html.theme-light {
+  /* SpawnEra Clean Light Theme */
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-2: #f1f5f9;
+  --color-surface-3: #e2e8f0;
+  --color-border: #cbd5e1;
+  --color-border-light: #94a3b8;
+
+  --color-brand: #059669;
+  --color-brand-hover: #047857;
+  --color-brand-glow: rgba(5, 150, 105, 0.2);
+
+  --color-primary: #4f46e5;
+  --color-primary-dim: #4338ca;
+  --color-primary-glow: rgba(79, 70, 229, 0.2);
+
+  --color-accent: #7c3aed;
+  --color-accent-dim: #6d28d9;
+
+  --color-text: #0f172a;
+  --color-text-muted: #334155;
+  --color-text-dim: #64748b;
+
+  --color-done: #16a34a;
+  --color-progress: #d97706;
+  --color-todo: #dc2626;
+  --color-none: #64748b;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -83,14 +113,57 @@ body {
 
 .markmap-node text,
 .markmap-foreign,
-.markmap-foreign div,
-.markmap-foreign span {
+.markmap-foreign div {
   fill: var(--color-text) !important;
   color: var(--color-text) !important;
   font-family: var(--font-sans) !important;
   font-weight: 500 !important;
   font-size: 13.5px !important;
   letter-spacing: -0.01em;
+}
+
+.markmap-foreign span:not(.mdflow-badge):not(.mdflow-desc-text):not(.mdflow-badge-wrap) {
+  fill: var(--color-text) !important;
+  color: var(--color-text) !important;
+  font-family: var(--font-sans) !important;
+  font-weight: 500 !important;
+  font-size: 13.5px !important;
+}
+
+/* MDFlow Compact Meta Badges */
+.mdflow-badge-wrap {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  margin-left: 6px !important;
+  vertical-align: middle !important;
+}
+
+.mdflow-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  font-size: 10px !important;
+  line-height: 1.1 !important;
+  font-weight: 600 !important;
+  padding: 1px 4.5px !important;
+  border-radius: 4px !important;
+  background: var(--color-surface-2) !important;
+  border: 1px solid var(--color-border) !important;
+  color: var(--color-text-dim) !important;
+  fill: var(--color-text-dim) !important;
+  white-space: nowrap !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+}
+
+.mdflow-desc-text {
+  font-size: 10.5px !important;
+  line-height: 1.25 !important;
+  font-weight: 400 !important;
+  color: var(--color-text-dim) !important;
+  fill: var(--color-text-dim) !important;
+  opacity: 0.82 !important;
+  display: inline-block !important;
+  margin-top: 3px !important;
 }
 
 .markmap-node circle {
@@ -148,6 +221,26 @@ body {
   stroke-width: 3.5px !important;
   fill: #0284c7 !important;
   filter: drop-shadow(0 0 6px #38bdf8);
+}
+
+/* Markmap Active / Currently Edited Node Highlight */
+.markmap-node-active text,
+.markmap-node-active .markmap-foreign,
+.markmap-node-active div,
+.markmap-node-active span {
+  fill: #0ef38d !important;
+  color: #0ef38d !important;
+  font-weight: 800 !important;
+  text-shadow: 0 0 10px rgba(14, 243, 141, 0.4);
+}
+
+.markmap-node-active circle {
+  r: 9px !important;
+  stroke: #0ef38d !important;
+  stroke-width: 4px !important;
+  fill: #05d677 !important;
+  filter: drop-shadow(0 0 8px #0ef38d) drop-shadow(0 0 16px rgba(14, 243, 141, 0.5)) !important;
+  animation: pulse-ring 1.2s infinite alternate;
 }
 
 @keyframes pulse-ring {

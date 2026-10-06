@@ -9,6 +9,8 @@ import {
   moveMultipleNodesToParentInTree,
   deleteMetadataKeyFromAll,
   reorderNodeInTree,
+  findFeatureById,
+  flattenFeatures,
 } from '../models/feature'
 import type { FeatureNode, StatusDefinition, ColumnVisibilityConfig } from '../models/feature'
 import { parseMarkdown } from '../features/parser/markdownParser'
@@ -74,9 +76,29 @@ function reducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'LOAD_CONTENT': {
       const features = parseMarkdown(action.payload.content)
+      let selectedFeatureId = state.selectedFeatureId
+
+      if (selectedFeatureId) {
+        const found = findFeatureById(features, selectedFeatureId)
+        if (!found) {
+          const oldFlat = flattenFeatures(state.features)
+          const oldSelected = oldFlat.find((f) => f.id === selectedFeatureId)
+          if (oldSelected) {
+            const newFlat = flattenFeatures(features)
+            const matched = newFlat.find(
+              (f) => f.title.toLowerCase().trim() === oldSelected.title.toLowerCase().trim()
+            )
+            if (matched) {
+              selectedFeatureId = matched.id
+            }
+          }
+        }
+      }
+
       return {
         ...state,
         features,
+        selectedFeatureId,
         fileName: action.payload.fileName,
         origin: 'external',
       }

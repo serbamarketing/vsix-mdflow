@@ -28,19 +28,17 @@ const COMMON_METADATA_KEYS = [
   'status', 'priority', 'type', 'pic', 'deadline', 'owner', 'version',
   'tag', 'tags', 'platform', 'estimate', 'assignee', 'target', 'image',
   'img', 'thumbnail', 'cover', 'photo', 'link', 'url', 'href', 'website',
+  'todo', 'task', 'is_todo',
 ]
 
-function isMetadataLine(line: string): boolean {
-  const trimmed = line.trim().replace(/^[-*+]\s+/, '')
-  if (/^\*\*[a-zA-Z0-9_\s-]+:\*\*/.test(trimmed)) return true
-  if (/^\*\*[a-zA-Z0-9_\s-]+\*\*:\s*/.test(trimmed)) return true
-  const plainMatch = trimmed.match(/^([a-zA-Z0-9_\s-]+):\s*(.*)$/)
-  if (plainMatch) {
-    const potentialKey = plainMatch[1].trim().toLowerCase()
-    if (COMMON_METADATA_KEYS.includes(potentialKey)) return true
-  }
-  return false
+function extractDescFromText(text: string): string | null {
+  const match = text.match(/^\*\*(?:desc|deskripsi):\*\*\s*(.*)$/is)
+  if (match) return match[1].trim()
+  const match2 = text.match(/^(?:desc|deskripsi):\s*(.*)$/is)
+  if (match2) return match2[1].trim()
+  return null
 }
+
 
 // Check if a line is a metadata line: "**Key:** Value" or "Key: Value"
 function parseMetadataFromText(rawText: string): Record<string, string> {
@@ -53,6 +51,7 @@ function parseMetadataFromText(rawText: string): Record<string, string> {
     const boldMatch = trimmed.match(/^\*\*([a-zA-Z0-9_\s-]+):\*\*\s*(.*)$/)
     if (boldMatch) {
       const key = boldMatch[1].trim().toLowerCase()
+      if (key === 'desc' || key === 'deskripsi') continue
       const val = boldMatch[2].trim()
       if (key && val) metadata[key] = val
       continue
@@ -62,15 +61,17 @@ function parseMetadataFromText(rawText: string): Record<string, string> {
     const boldMatch2 = trimmed.match(/^\*\*([a-zA-Z0-9_\s-]+)\*\*:\s*(.*)$/)
     if (boldMatch2) {
       const key = boldMatch2[1].trim().toLowerCase()
+      if (key === 'desc' || key === 'deskripsi') continue
       const val = boldMatch2[2].trim()
       if (key && val) metadata[key] = val
       continue
     }
 
-    // Pattern 3: Key: Value (for common keys like status, priority, type, pic, deadline, owner, version, image, link)
+    // Pattern 3: Key: Value
     const plainMatch = trimmed.match(/^([a-zA-Z0-9_\s-]+):\s*(.*)$/)
     if (plainMatch) {
       const potentialKey = plainMatch[1].trim().toLowerCase()
+      if (potentialKey === 'desc' || potentialKey === 'deskripsi') continue
       if (COMMON_METADATA_KEYS.includes(potentialKey)) {
         metadata[potentialKey] = plainMatch[2].trim()
       }
@@ -109,53 +110,86 @@ export function parseMarkdown(content: string): FeatureNode[] {
         description: [],
         metadata: {},
       }
-    } else if (current) {
-      if (node.type === 'paragraph') {
-        const raw = extractText(node)
-        const meta = parseMetadataFromText(raw)
-        if (Object.keys(meta).length > 0) {
-          Object.assign(current.metadata, meta)
-          // Filter out lines that were metadata from description
-          const nonMetaLines = raw
-            .split('\n')
-            .filter((l) => !isMetadataLine(l))
-            .join('\n')
-            .trim()
-          if (nonMetaLines) current.description.push(nonMetaLines)
-        } else {
-          if (raw.trim()) current.description.push(raw.trim())
+    } else if (node.type === 'paragraph') {
+      const raw = extractText(node)
+      const lines = raw.split('\n')
+      const hasHeadingLine = lines.some((l) => /^(#{1,})\s+(.*)$/.test(l.trim()))
+
+      if (hasHeadingLine) {
+        for (const rawLine of lines) {
+          const trimmed = rawLine.trim()
+          if (!trimmed) continue
+          const hMatch = trimmed.match(/^(#{1,})\s+(.*)$/)
+          if (hMatch) {
+            if (current) blocks.push(current)
+            current = {
+              level: hMatch[1].length,
+              title: hMatch[2].trim(),
+              description: [],
+              metadata: {},
+            }
+          } else if (current) {
+            const desc = extractDescFromText(trimmed)
+            if (desc !== null) {
+              current.description.push(desc)
+            } else {
+              const meta = parseMetadataFromText(trimmed)
+              if (Object.keys(meta).length > 0) {
+                Object.assign(current.metadata, meta)
+              }
+            }
+          }
         }
-      } else if (node.type === 'list') {
+      } else if (current) {
+        // Cek apakah seluruh paragraf ini adalah **Desc:**
+        const desc = extractDescFromText(raw)
+        if (desc !== null) {
+          current.description.push(desc)
+        } else {
+          // Atau baris per baris jika ada campuran metadata dan desc
+          let foundDescInLines = false
+          for (const l of lines) {
+            const trimmed = l.trim()
+            const d = extractDescFromText(trimmed)
+            if (d !== null) {
+              current.description.push(d)
+              foundDescInLines = true
+            }
+          }
+          if (!foundDescInLines) {
+            const meta = parseMetadataFromText(raw)
+            if (Object.keys(meta).length > 0) {
+              Object.assign(current.metadata, meta)
+            }
+          }
+        }
+      }
+    } else if (current) {
+      if (node.type === 'list') {
         const list = node as List
         for (const item of list.children as ListItem[]) {
           const itemText = extractText(item).trim()
+          const desc = extractDescFromText(itemText)
+          if (desc !== null) {
+            current.description.push(desc)
+            continue
+          }
           const meta = parseMetadataFromText(itemText)
           if (Object.keys(meta).length > 0) {
             Object.assign(current.metadata, meta)
-            const nonMeta = itemText
-              .split('\n')
-              .filter((l) => !isMetadataLine(l))
-              .join('\n')
-              .trim()
-            if (nonMeta) current.description.push(`- ${nonMeta}`)
-          } else if (itemText) {
-            current.description.push(`- ${itemText}`)
           }
         }
       } else if (node.type === 'blockquote') {
         const quoteText = extractText(node).trim()
         if (quoteText) {
-          const meta = parseMetadataFromText(quoteText)
-          if (Object.keys(meta).length > 0) {
-            Object.assign(current.metadata, meta)
-            const nonMeta = quoteText
-              .split('\n')
-              .filter((l) => !isMetadataLine(l))
-              .join('\n')
-              .trim()
-            if (nonMeta) current.description.push(`> ${nonMeta}`)
+          const desc = extractDescFromText(quoteText)
+          if (desc !== null) {
+            current.description.push(desc)
           } else {
-            current.description.push(`> ${quoteText}`)
+            const meta = parseMetadataFromText(quoteText)
+            if (Object.keys(meta).length > 0) {
+              Object.assign(current.metadata, meta)
+            }
           }
         }
       }

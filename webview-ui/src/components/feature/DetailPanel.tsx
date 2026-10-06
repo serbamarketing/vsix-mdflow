@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   X,
   Plus,
@@ -15,8 +15,7 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import { useAppStore } from '../../hooks/useAppStore'
-import { findFeatureById, flattenFeatures, generateFeatureId, getStatusColor } from '../../models/feature'
-import type { FeatureNode } from '../../models/feature'
+import { findFeatureById, flattenFeatures, getStatusColor, isTodoItem } from '../../models/feature'
 
 export function DetailPanel() {
   const { state, dispatch } = useAppStore()
@@ -27,6 +26,7 @@ export function DetailPanel() {
   const parent = feature ? allFlat.find((f) => f.children.some((c) => c.id === feature.id)) : null
 
   // Local form state
+  const titleInputRef = useRef<HTMLInputElement>(null)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [metadata, setMetadata] = useState<Record<string, string>>({})
@@ -39,10 +39,18 @@ export function DetailPanel() {
   useEffect(() => {
     if (feature) {
       setTitle(feature.title)
-      setDescription(feature.description ?? '')
+      const cleanDesc = (feature.description ?? '').replace(/^\*\*(?:desc|deskripsi):\*\*\s*/i, '').replace(/^(?:desc|deskripsi):\s*/i, '')
+      setDescription(cleanDesc)
       setMetadata({ ...feature.metadata })
       setIsAddingMeta(false)
       setIsConfirmDelete(false)
+      // Langsung sorot/focus judul item jika sub-item baru dibuka
+      setTimeout(() => {
+        titleInputRef.current?.focus()
+        if (feature.title.includes('Sub-item') || feature.title === 'Item Baru') {
+          titleInputRef.current?.select()
+        }
+      }, 60)
     }
   }, [feature?.id, feature?.title, feature?.description, feature?.metadata])
 
@@ -108,18 +116,9 @@ export function DetailPanel() {
   }
 
   const handleAddChild = () => {
-    const childId = generateFeatureId('Sub-item')
-    const newNode: FeatureNode = {
-      id: childId,
-      title: 'Sub-item Baru',
-      level: feature.level + 1,
-      description: '',
-      metadata: {},
-      children: [],
-    }
     dispatch({
-      type: 'ADD_FEATURE_NODE',
-      payload: { parentId: feature.id, node: newNode },
+      type: 'OPEN_NEW_FEATURE_MODAL',
+      payload: feature.id,
     })
   }
 
@@ -270,6 +269,7 @@ export function DetailPanel() {
             Judul Item
           </label>
           <input
+            ref={titleInputRef}
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -282,6 +282,49 @@ export function DetailPanel() {
             className="flex-1 px-2.5 py-1.5 text-xs font-semibold rounded-xl border outline-none"
             style={{ background: 'var(--color-surface-2)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
           />
+        </div>
+
+        {/* 2.5. Penanda Bagian To Do / Kategori Tree */}
+        <div className="flex items-center gap-3">
+          <label className="w-28 text-xs font-semibold shrink-0" style={{ color: 'var(--color-text-dim)' }}>
+            Bagian To Do
+          </label>
+          <div className="flex-1 flex gap-1 p-0.5 rounded-xl border" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface-2)' }}>
+            <button
+              type="button"
+              onClick={() => {
+                const updatedMeta: Record<string, string> = { ...metadata, todo: 'false' }
+                delete updatedMeta.status
+                setMetadata(updatedMeta)
+                dispatch({
+                  type: 'UPDATE_FEATURE_NODE',
+                  payload: { id: feature.id, updates: { metadata: updatedMeta } },
+                })
+              }}
+              className={`flex-1 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer text-center ${
+                !isTodoItem({ ...feature, metadata }) ? 'bg-slate-700/90 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              📁 Kategori Saja
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const updatedMeta: Record<string, string> = { ...metadata, todo: 'true' }
+                if (!updatedMeta.status) updatedMeta.status = '🔴 Todo'
+                setMetadata(updatedMeta)
+                dispatch({
+                  type: 'UPDATE_FEATURE_NODE',
+                  payload: { id: feature.id, updates: { metadata: updatedMeta } },
+                })
+              }}
+              className={`flex-1 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer text-center ${
+                isTodoItem({ ...feature, metadata }) ? 'bg-[var(--color-brand)] text-slate-950 font-bold shadow-sm' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              ✅ Ya, Item To Do
+            </button>
+          </div>
         </div>
 
         {/* 3. Status */}
